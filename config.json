@@ -1,0 +1,6 @@
+{
+  "port":"6668",
+  "service_id":"9",
+  "alive_time":"2",
+  "election_time":"4"
+}
