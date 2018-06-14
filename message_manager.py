@@ -8,6 +8,8 @@ ELECTION = "2"
 NEW_LEADER = "3"
 LEADER_ALIVE = "4"
 ELECTION_STOP = "5"
+OK_CRITICAL_MESSAGE = "33"
+REQUEST_CRITICAL_MESSAGE = "34"
 MESSAGE = "42"
 
 class MessageManager(QObject):
@@ -18,6 +20,8 @@ class MessageManager(QObject):
     signal_leader_alive = pyqtSignal()
     signal_has_message_to_send = pyqtSignal(str)
     signal_candidate_found = pyqtSignal(str, str, str, bool)
+    signal_received_ok = pyqtSignal(int)
+    signal_critical_request = pyqtSignal(int,str)
 
     def __init__(self,connection_manager, service_id):
         super().__init__()
@@ -27,6 +31,8 @@ class MessageManager(QObject):
         self.service_id = service_id
         self.election_happening = False
         self.ip = self.connect_manager.get_ip
+        self.n_process = 1
+
 
     def send_message_to_main_window(self,string):
         self.signal_message_received.emit(string)
@@ -36,7 +42,9 @@ class MessageManager(QObject):
         data = json.loads(jdata)
         if data["code"] == ENTER_GROUP:
             if self.is_leader and not self.ip==data["host"]:
-                ndata = {"code": NEW_LEADER, "msg": self.service_id}
+                self.n_process+=1
+                msg = json.dumps({"id":self.service_id,"process":self.n_process})
+                ndata = {"code": NEW_LEADER, "msg": msg}
                 jdata = json.dumps(ndata)
                 self.connect_manager.send_message(jdata,data["host"],data["msg"])
                 self.send_message_to_main_window("Info sended to new member:"+data["host"]+":"+data["msg"])
@@ -44,7 +52,9 @@ class MessageManager(QObject):
             if int(data["msg"]) > self.leader_id:
                 self.signal_candidate_found.emit(data["msg"],data["host"],data["port"],False)
         elif data["code"] == NEW_LEADER:
-            self.signal_leader_responded.emit(data["msg"], data["host"], data["port"])
+            msg = json.loads(data["msg"])
+            self.n_process = msg["process"]
+            self.signal_leader_responded.emit(msg["id"], data["host"], data["port"])
             self.send_message_to_main_window("New leader is: " + str(data["msg"]))
         elif data["code"] == LEADER_ALIVE:
             if self.is_leader:
@@ -59,6 +69,14 @@ class MessageManager(QObject):
                 self.election_finished()
             else:
                 qDebug("Late Election")
+        elif data["code"] == OK_CRITICAL_MESSAGE:
+            qDebug("Ok Critical "+str(data))
+            msg = json.loads(data["msg"])
+            self.signal_received_ok.emit(int(msg["tick"]))
+        elif data["code"] == REQUEST_CRITICAL_MESSAGE:
+            msg = json.loads(data["msg"])
+            qDebug("Critical Requested"+str(data))
+            self.signal_critical_request(msg["tick"],data["host"])
         else:
             self.send_message_to_main_window("Unknown Code")
 

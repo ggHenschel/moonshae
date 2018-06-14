@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication
 from message_manager import MessageManager
 from connection_manager import ConnectionManager
 from election_handler import ElectionHandler
+from worker import WorkerController
 import json
 import time
 import threading as th
@@ -10,11 +11,16 @@ import threading as th
 ENTER_GROUP = "1"
 ELECTION = "2"
 NEW_LEADER = "3"
+LEADER_ALIVE = "4"
+ELECTION_STOP = "5"
+OK_CRITICAL_MESSAGE = "33"
+REQUEST_CRITICAL_MESSAGE = "34"
+MESSAGE = "42"
 
 class AliveChecker(QThread):
     signal_election_is_due = pyqtSignal()
 
-    def __init__(self,controller,leader_ip,leader_port, connection_manager, alive_timer=2):
+    def __init__(self,leader_ip,leader_port, connection_manager, alive_timer=2):
         super().__init__()
         self.leader_ip = leader_ip
         self.leader_port = leader_port
@@ -70,7 +76,11 @@ class Controller(QObject):
         self.control_boolean = False
         self.alive_checker_thread = AliveChecker(self,self.leader_ip,self.leader_port,self.connection_manager)
         self.alive_checker_thread.signal_election_is_due.connect(self.do_election)
+        self.message_manager.signal_received_ok.connect(self.receive_ok)
+        self.message_manager.signal_critical_request.connect(self.receive_request)
 
+        self.worker_controller = WorkerController(1)
+        self.worker_controller.signal_request_critical.connect()
         #do first multicast
         self.th = th.Thread(target= self.request_group)
         self.th.start()
@@ -91,7 +101,9 @@ class Controller(QObject):
         else:
             self.iam_leader = False
             self.message_manager.set_is_leader(False)
-
+            self.alive_checker_thread.start()
+        #colocar a mudaça de numero de processos aqui
+        self.worker_controller.start()
 
     @pyqtSlot(str)
     def print_string(self,string):
@@ -148,7 +160,24 @@ class Controller(QObject):
     @pyqtSlot()
     def close(self):
         self.alive_checker_thread.terminate()
+        self.worker_controller.end()
 
+    @pyqtSignal(int)
+    def request_critical(self,tick):
+
+        pass
+
+    @pyqtSignal(int,str)
+    def send_free_message(self,tick,ip):
+        pass
+
+    @pyqtSlot(int)
+    def receive_ok(self, tick):
+        self.worker_controller.receive_ok(tick)
+
+    @pyqtSlot(int, str)
+    def receive_request(self, tick, ip):
+        self.worker_controller.receive_request(tick,ip)
 
     # OLD CODE - DELETE AFTER
     # def check_leader(self):
