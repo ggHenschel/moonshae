@@ -80,7 +80,8 @@ class Controller(QObject):
         self.message_manager.signal_critical_request.connect(self.receive_request)
 
         self.worker_controller = WorkerController(1)
-        self.worker_controller.signal_request_critical.connect()
+        self.worker_controller.signal_request_critical.connect(self.request_critical)
+        self.worker_controller.signal_send_free_message.connect(self.send_free_message)
         #do first multicast
         self.th = th.Thread(target= self.request_group)
         self.th.start()
@@ -162,14 +163,13 @@ class Controller(QObject):
         self.alive_checker_thread.terminate()
         self.worker_controller.end()
 
-    @pyqtSignal(int)
+    @pyqtSlot(int)
     def request_critical(self,tick):
+        self.message_manager.request_critical(tick)
 
-        pass
-
-    @pyqtSignal(int,str)
+    @pyqtSlot(int,str)
     def send_free_message(self,tick,ip):
-        pass
+        self.message_manager.send_free_message(tick,ip)
 
     @pyqtSlot(int)
     def receive_ok(self, tick):

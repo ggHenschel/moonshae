@@ -30,7 +30,7 @@ class CriticalWorker(QThread):
 
 class WorkerController(QObject):
 
-    signal_request_critical = pyqtSlot(int)
+    signal_request_critical = pyqtSignal(int)
     signal_send_free_message = pyqtSignal(int, str)
 
     def __init__(self,total_number_of_process):
@@ -92,7 +92,6 @@ class WorkerController(QObject):
 
 
     def receive_request(self,tick,ip):
-        self.total_number_of_oks += 1
         if tick > self.tick:
             self.tick = tick + 1
         else:

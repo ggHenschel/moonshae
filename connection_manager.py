@@ -15,6 +15,7 @@ class ConnectionManager(QObject):
     def __init__(self,port,service_id):
         self.multicastgroup = QHostAddress("224.0.1.232")
         self.mcast_port = 55421
+        self.port = port
         super().__init__()
         self.udpSocket = QUdpSocket(self)
         self.udpSocket.bind(QHostAddress.AnyIPv4,int(port))
@@ -40,7 +41,9 @@ class ConnectionManager(QObject):
         jdata = json.dumps(data)
         self.signal_senda_data_to_message_manager.emit(jdata)
 
-    def send_message(self,jdata,ip,port):
+    def send_message(self,jdata,ip,port=0):
+        if port == 0:
+            port = self.port
         data = json.loads(jdata)
         self.udpSocket.writeDatagram(pickle.dumps((data["code"],data["msg"])),QHostAddress(ip),int(port))
 

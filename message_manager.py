@@ -76,7 +76,10 @@ class MessageManager(QObject):
         elif data["code"] == REQUEST_CRITICAL_MESSAGE:
             msg = json.loads(data["msg"])
             qDebug("Critical Requested"+str(data))
-            self.signal_critical_request(msg["tick"],data["host"])
+            if self.ip == data["host"]:
+                self.signal_received_ok.emit(int(msg["tick"]))
+            else:
+                self.signal_critical_request(msg["tick"],data["host"])
         else:
             self.send_message_to_main_window("Unknown Code")
 
@@ -101,3 +104,13 @@ class MessageManager(QObject):
 
     def set_is_leader(self,is_leader):
         self.is_leader = is_leader
+
+    def request_critical(self, tick):
+        data = {"code": REQUEST_CRITICAL_MESSAGE, "msg": {"tick":str(tick)}}
+        jdata = json.dumps(data)
+        self.connect_manager.send_multicast_message(jdata)
+
+    def send_free_message(self, tick, ip):
+        data = {"code": OK_CRITICAL_MESSAGE, "msg": {"tick": str(tick)}}
+        jdata = json.dumps(data)
+        self.connect_manager.send_message(jdata,ip)
